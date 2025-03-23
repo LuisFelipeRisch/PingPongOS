@@ -60,22 +60,22 @@ void queue_print(char *name, queue_t *queue, void (*print_elem)(void *)) {
 
 int queue_append (queue_t **queue, queue_t *elem){
   if (!queue) {
-    fprintf(stderr, "The given queue (queue) is NULL\n");
+    fprintf(stderr, "A fila não existe!\n");
     return -1;
   }
 
   if (!elem) {
-    fprintf(stderr, "The given element (elem) is NULL\n");
+    fprintf(stderr, "O elemento não existe!\n");
     return -1;
   }
 
   if (element_exists_in_queue((*queue), elem)) {
-    fprintf(stderr, "The given element (elem) already belongs to queue\n");
+    fprintf(stderr, "O elemento já pertence a fila!\n");
     return -1;
   }
 
   if (elem->next || elem->prev) {
-    fprintf(stderr, "The given element (elem) already belongs to a another queue!\n");
+    fprintf(stderr, "O elemento pertence a outra fila!\n");
     return -1;
   }
 
@@ -97,22 +97,22 @@ int queue_append (queue_t **queue, queue_t *elem){
 
 int queue_remove (queue_t **queue, queue_t *elem){
   if (!queue) {
-    fprintf(stderr, "The given queue (queue) is NULL\n");
+    fprintf(stderr, "A fila não existe!\n");
     return -1;
   }
 
   if (!(*queue)) {
-    fprintf(stderr, "The given queue (queue) is empty!\n");
+    fprintf(stderr, "A fila é vazia\n");
     return -1;
   }
 
   if (!elem) {
-    fprintf(stderr, "The given element (elem) is NULL\n");
+    fprintf(stderr, "O elemento não existe!\n");
     return -1;
   }
 
   if (!element_exists_in_queue(*queue, elem)) {
-    fprintf(stderr, "The given element (elem) does not belongs to the given queue!\n");
+    fprintf(stderr, "O elemento não pertence a fila!\n");
     return -1;
   }
 
