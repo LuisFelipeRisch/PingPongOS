@@ -40,7 +40,7 @@ int queue_size (queue_t *queue){
 
 void queue_print(char *name, queue_t *queue, void (*print_elem)(void *)) {
   if (!queue) {
-    printf("%s: [ ]\n", name);
+    printf("%s: []\n", name);
     return;
   }
 
@@ -66,6 +66,11 @@ int queue_append (queue_t **queue, queue_t *elem){
 
   if (!elem) {
     fprintf(stderr, "The given element (elem) is NULL\n");
+    return -1;
+  }
+
+  if (element_exists_in_queue((*queue), elem)) {
+    fprintf(stderr, "The given element (elem) already belongs to queue\n");
     return -1;
   }
 
