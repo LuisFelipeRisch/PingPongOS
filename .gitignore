@@ -1,2 +1,4 @@
 src/queue/*.o
 /*.o
+dummies
+.vscode
