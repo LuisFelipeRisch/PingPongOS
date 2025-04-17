@@ -24,50 +24,39 @@ void task_yield() {
   task_switch(&dispatcher_task);
 }
 
-// TODO. PEGAR A NEXT FAZER MENOR OU IGUAL
 task_t *scheduler() {
   if (!queue_size(ready_tasks))
     return NULL; 
-  
+
   task_t  *next_task, 
           *cur_task;
   queue_t *cur_queue_node;
-  
+
   cur_queue_node = ready_tasks;
   next_task      = (task_t *) cur_queue_node;
-  cur_task       = (task_t *) cur_queue_node;
 
-  do
-  {
-    cur_queue_node = cur_queue_node->next; 
-    cur_task       = (task_t *) cur_queue_node;
-
-    #ifdef DEBUG
-      fprintf(stdout, "#cur_task->id: %d, cur_task->prio: %d; next_task->id: %d, next_task->prio: %d ||||| ", 
-              cur_task->id, cur_task->dynamic_priority, next_task->id, next_task->dynamic_priority);
-    #endif
+  do {
+    cur_task = (task_t *) cur_queue_node;
 
     if (cur_task->dynamic_priority <= next_task->dynamic_priority)
       next_task = cur_task;
 
+    cur_queue_node = cur_queue_node->next;
+
   } while (cur_queue_node != ready_tasks);
 
-  do
-  {
-    cur_queue_node = cur_queue_node->next; 
-    cur_task       = (task_t *) cur_queue_node;
+  cur_queue_node = ready_tasks;
+  do {
+    cur_task = (task_t *) cur_queue_node;
 
     if (cur_task != next_task)
       cur_task->dynamic_priority -= AGING;
 
+    cur_queue_node = cur_queue_node->next;
+
   } while (cur_queue_node != ready_tasks);
 
-  #ifdef DEBUG
-    fprintf(stdout, "\n");
-  #endif
-
   next_task->dynamic_priority = next_task->static_priority;
-
   queue_remove((queue_t **) &ready_tasks, (queue_t *) next_task);
 
   return next_task;
