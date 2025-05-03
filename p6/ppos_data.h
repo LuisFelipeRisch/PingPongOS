@@ -37,10 +37,10 @@ typedef struct task_t
   ucontext_t context ;			// contexto armazenado da tarefa
   task_status status ;			// pronta, rodando, suspensa, ...
   int vg_id ; // ID da pilha da tarefa no Valgrind
-  int static_priority; 
-  int dynamic_priority;
-  int tick_counter;
-  task_type type;
+  int static_priority; // prioridade estática
+  int dynamic_priority; // prioridade dinâmica
+  int tick_counter; // contador de tick
+  task_type type; // tipo de tarefa (sistema ou usuário)
   unsigned int start_time;    // tempo de criação da tarefa
   unsigned int cpu_time;      // tempo de cpu da tarefa
   unsigned int activations;   // numero de ativações da tarefa
