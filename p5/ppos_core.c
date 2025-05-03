@@ -142,6 +142,7 @@ void ppos_init()
 
   main_task.id = task_id_counter++;
   main_task.status = READY;
+  main_task.type = USER;
   queue_append((queue_t **)&ready_tasks, (queue_t *)&main_task);
 
   task_init(&dispatcher_task, dispatcher, NULL);
