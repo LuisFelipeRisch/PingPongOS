@@ -21,6 +21,7 @@ typedef enum task_status
   READY, 
   FINISHED, 
   SUSPENDED,
+  SLEEPING
 } task_status;
 
 typedef enum task_type
@@ -46,6 +47,7 @@ typedef struct task_t
   unsigned int activations;   // numero de ativações da tarefa
   struct task_t *wait_for_task;   // task que está sendo aguardada
   int exit_code;
+  unsigned int wake_time;
   // ... (outros campos serão adicionados mais tarde)
 } task_t ;
 

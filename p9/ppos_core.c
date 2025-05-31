@@ -17,7 +17,8 @@
 #define STACK_SIZE 64 * 1024
 
 queue_t *ready_tasks, 
-        *suspended_tasks;
+        *suspended_tasks, 
+        *sleeping_tasks;
 task_t main_task, dispatcher_task,
     *current_task = &main_task;
 int task_id_counter = 0;
@@ -122,28 +123,63 @@ task_t *scheduler()
   return next_task;
 }
 
+void awake_sleeping_tasks()
+{
+  if (queue_size(sleeping_tasks) == 0)
+    return;
+
+  queue_t *cur_node = sleeping_tasks;
+  queue_t *start_node = sleeping_tasks;
+  queue_t *next_node = NULL;
+
+  do
+  {
+    next_node = cur_node->next;
+    task_t *cur_task = (task_t *) cur_node;
+
+    if (cur_task->status == SLEEPING && systime() >= cur_task->wake_time)
+    {
+      if (cur_node == start_node)
+      {
+        start_node = next_node;
+      }
+      task_awake(cur_task, (task_t **) &sleeping_tasks);
+    }
+
+    cur_node = next_node;
+  } while (cur_node != start_node);
+}
+
+
 void dispatcher()
 {
   task_t *next_task;
   unsigned int task_start_time;
 
-  while ((next_task = scheduler()))
-  {
-    task_start_time = systime();
-    task_switch(next_task);
-    next_task->cpu_time += systime() - task_start_time;
+  while (queue_size(ready_tasks) ||
+         queue_size(suspended_tasks) ||
+         queue_size(sleeping_tasks)) {
+    awake_sleeping_tasks();
 
-    switch (next_task->status)
-    {
-    case FINISHED:
-      if (element_exists_in_queue((queue_t *) ready_tasks, 
-                              (queue_t *) next_task))
-        queue_remove((queue_t **) &ready_tasks, (queue_t *) next_task);
+    next_task = scheduler(); 
+    
+    if (next_task) {
+      task_start_time = systime();
+      task_switch(next_task);
+      next_task->cpu_time += systime() - task_start_time;
 
-      free_task_stack(next_task);
-      break;
-    default:
-      break;
+      switch (next_task->status)
+      {
+      case FINISHED:
+        if (element_exists_in_queue((queue_t *) ready_tasks, 
+                                (queue_t *) next_task))
+          queue_remove((queue_t **) &ready_tasks, (queue_t *) next_task);
+
+        free_task_stack(next_task);
+        break;
+      default:
+        break;
+      }
     }
   }
 
@@ -399,11 +435,20 @@ void task_suspend (task_t **queue) {
                               (queue_t *) current_task))
       queue_remove((queue_t **) &ready_tasks, (queue_t *) current_task);
 
-  #ifdef DEBUG
-    printf("task_suspend: task %d SUSPENDED!\n", current_task->id);
-  #endif
+  if ((queue_t **) queue == (queue_t **) &sleeping_tasks) {
+    #ifdef DEBUG
+      printf("task_suspend: task %d SLEPT!\n", current_task->id);
+    #endif
 
-  current_task->status = SUSPENDED; 
+    current_task->status = SLEEPING;
+  } else if ((queue_t **) queue == (queue_t **) &suspended_tasks) {
+    #ifdef DEBUG
+      printf("task_suspend: task %d SUSPENDED!\n", current_task->id);
+    #endif
+
+    current_task->status = SUSPENDED;
+  }
+
   queue_append((queue_t **) queue, (queue_t *) current_task);
   task_switch(&dispatcher_task);
 }
@@ -452,5 +497,15 @@ int task_wait (task_t *task) {
   current_task->wait_for_task = NULL;
 
   return exit_code;
+}
+
+void task_sleep (int t) {
+  current_task->wake_time = systime() + t;
+
+  #ifdef DEBUG
+    printf("task_sleep: task %d went to sleep %dms. Wake system time is %dms\n", current_task->id, t, current_task->wake_time);
+  #endif
+
+  task_suspend((task_t **) &sleeping_tasks);
 }
 
