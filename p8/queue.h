@@ -58,4 +58,6 @@ int queue_append (queue_t **queue, queue_t *elem) ;
 
 int queue_remove (queue_t **queue, queue_t *elem) ;
 
+int element_exists_in_queue(queue_t *queue, queue_t *element);
+
 #endif

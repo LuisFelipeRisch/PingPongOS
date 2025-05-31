@@ -16,7 +16,8 @@
 
 #define STACK_SIZE 64 * 1024
 
-queue_t *ready_tasks;
+queue_t *ready_tasks, 
+        *suspended_tasks;
 task_t main_task, dispatcher_task,
     *current_task = &main_task;
 int task_id_counter = 0;
@@ -135,6 +136,10 @@ void dispatcher()
     switch (next_task->status)
     {
     case FINISHED:
+      if (element_exists_in_queue((queue_t *) ready_tasks, 
+                              (queue_t *) next_task))
+        queue_remove((queue_t **) &ready_tasks, (queue_t *) next_task);
+
       free_task_stack(next_task);
       break;
     default:
@@ -244,11 +249,66 @@ int task_switch(task_t *task)
   return 0;
 }
 
+void task_awake (task_t *task, task_t **queue) {
+  if (!task) {
+    #ifdef DEBUG
+      printf("task_awake: task is NULL!\n");
+    #endif
+    
+    return;
+  }
+
+  if (!queue) {
+    #ifdef DEBUG
+      printf("task_awake: queue is NULL!\n");
+    #endif
+    
+    return;
+  }
+
+  if (queue_remove((queue_t **) queue, (queue_t *) task) == 0) {
+    #ifdef DEBUG
+      printf("task_awake: task %d is awake!\n", task->id);
+    #endif
+
+    task->status = READY;
+    queue_append((queue_t **) &ready_tasks, (queue_t *) task);
+  } else {
+    #ifdef DEBUG
+      printf("task_awake: task %d not found in queue\n", task->id);
+    #endif
+  }
+}
+
+void awake_tasks_waiting_for_task(task_t *task) {
+  if (!task || !queue_size(suspended_tasks))
+    return;
+
+  task_t *cur_task;
+  queue_t *cur_node = suspended_tasks;
+  queue_t *start = cur_node;
+
+  queue_t *next_node;
+  
+  do {
+    next_node = cur_node->next;
+    cur_task = (task_t *) cur_node;
+
+    if (cur_task->wait_for_task == task)
+      task_awake(cur_task, (task_t **) &suspended_tasks);
+
+    cur_node = next_node;
+
+  } while (cur_node != start && queue_size(suspended_tasks));
+}
+
 void task_exit(int exit_code)
 {
 #ifdef DEBUG
   fprintf(stdout, "task_exit: tarefa %d sendo encerrada\n", current_task->id);
 #endif
+
+  current_task->exit_code = exit_code;
 
   unsigned int task_life_time = systime() - current_task->start_time;
   fprintf(stdout, 
@@ -266,6 +326,7 @@ void task_exit(int exit_code)
   else
   {
     current_task->status = FINISHED;
+    awake_tasks_waiting_for_task(current_task);
     task_switch(&dispatcher_task);
   }
 }
@@ -324,3 +385,72 @@ int task_getprio(task_t *task)
 
   return static_priority;
 }
+
+void task_suspend (task_t **queue) {
+  if (!queue) {
+    #ifdef DEBUG
+      printf("task_suspend: queue is NULL!\n");
+    #endif
+    
+    return;
+  }
+
+  if (element_exists_in_queue((queue_t *) ready_tasks, 
+                              (queue_t *) current_task))
+      queue_remove((queue_t **) &ready_tasks, (queue_t *) current_task);
+
+  #ifdef DEBUG
+    printf("task_suspend: task %d SUSPENDED!\n", current_task->id);
+  #endif
+
+  current_task->status = SUSPENDED; 
+  queue_append((queue_t **) queue, (queue_t *) current_task);
+  task_switch(&dispatcher_task);
+}
+
+int task_wait (task_t *task) {
+  if (!task) {
+    #ifdef DEBUG
+      printf("task_wait: task is NULL!\n");
+    #endif
+    
+    return -1;
+  }
+  
+  if (task->status == FINISHED || task->status == SUSPENDED) {
+    #ifdef DEBUG
+      printf("task_wait: task %d is SUSPENDED or FINISHED\n", task->id);
+    #endif
+    
+    return -1;
+  }
+  
+  if (task == current_task) {
+    #ifdef DEBUG
+      printf("task_wait: task %d can not SUSPEND the current task\n", task->id);
+    #endif
+    
+    return -1;
+  }
+
+  if (!element_exists_in_queue(ready_tasks, (queue_t *) task) && 
+      !element_exists_in_queue(suspended_tasks, (queue_t *) task)) {
+        #ifdef DEBUG
+          printf("task_wait: task %d not found\n", task->id);
+        #endif
+        
+        return -1;
+      }
+
+  #ifdef DEBUG
+    printf("task_wait: task %d waits for task %d\n", current_task->id, task->id);
+  #endif
+
+  current_task->wait_for_task = task; 
+  task_suspend((task_t **) &suspended_tasks);
+  int exit_code = current_task->wait_for_task->exit_code;
+  current_task->wait_for_task = NULL;
+
+  return exit_code;
+}
+
