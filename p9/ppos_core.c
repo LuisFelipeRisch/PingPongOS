@@ -125,7 +125,7 @@ task_t *scheduler()
 
 void awake_sleeping_tasks()
 {
-  if (queue_size(sleeping_tasks) == 0)
+  if (!queue_size(sleeping_tasks))
     return;
 
   queue_t *cur_node = sleeping_tasks;
@@ -140,9 +140,8 @@ void awake_sleeping_tasks()
     if (cur_task->status == SLEEPING && systime() >= cur_task->wake_time)
     {
       if (cur_node == start_node)
-      {
         start_node = next_node;
-      }
+        
       task_awake(cur_task, (task_t **) &sleeping_tasks);
     }
 
@@ -330,8 +329,12 @@ void awake_tasks_waiting_for_task(task_t *task) {
     next_node = cur_node->next;
     cur_task = (task_t *) cur_node;
 
-    if (cur_task->wait_for_task == task)
+    if (cur_task->wait_for_task == task) {
+      if (cur_node == start)
+        start = next_node;
+        
       task_awake(cur_task, (task_t **) &suspended_tasks);
+    }
 
     cur_node = next_node;
 
